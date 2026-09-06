@@ -3,7 +3,8 @@ import json
 import threading
 import time
 import customtkinter as ctk
-import psutil  
+import psutil
+import subprocess  
 from tkinter import filedialog  # 🛠️ ADDED: Native file browser dialogue hooks
 
 # Import all background parsing components directly from your bridge code
@@ -49,9 +50,11 @@ class WallpaperBridgeGUI(ctk.CTk):
 
     def create_sidebar_navigation(self):
         """Constructs the left navigation rail cleanly mimicking structural specifications."""
-        self.sidebar_frame = ctk.CTkFrame(self, width=180, corner_radius=0, fg_color=self.theme_colors["surface_panel"], border_width=0)
+        self.sidebar_frame = ctk.CTkFrame(self, width=180, corner_radius=0, fg_color=self.theme_colors.get("surface_panel", "#053542"), border_width=0)
         self.sidebar_frame.grid(row=0, column=0, sticky="nsew")
-        self.sidebar_frame.grid_rowconfigure(5, weight=1)
+        
+        # Pushes space BELOW the navigation links so the status section sticks to the absolute bottom
+        self.sidebar_frame.grid_rowconfigure(5, weight=1) 
 
         self.app_title = ctk.CTkLabel(self.sidebar_frame, text="WE Bridge", font=ctk.CTkFont(size=16, weight="bold"), text_color="#ffffff")
         self.app_title.grid(row=0, column=0, padx=20, pady=25)
@@ -59,11 +62,15 @@ class WallpaperBridgeGUI(ctk.CTk):
         self.nav_buttons = {}
         self.base_tabs = [("Console", "console"), ("Settings", "settings"), ("Appearance", "appearance")]
         
+        # Safely extract variables matching what load_settings_into_ui populates
+        hover_state = self.theme_colors.get("elevated_card", "#05313d")
+        accent_state = self.theme_colors.get("accent", "#dc322f")
+
         for idx, (label, view_id) in enumerate(self.base_tabs, start=1):
             btn = ctk.CTkButton(
                 self.sidebar_frame, text=label, anchor="w", height=40,
                 corner_radius=8, fg_color="transparent", text_color="#a0b0b5",
-                hover_color=self.theme_colors["elevated_card"], font=ctk.CTkFont(size=13),
+                hover_color=hover_state, font=ctk.CTkFont(size=13),
                 command=lambda v=view_id: self.select_tab_pane(v)
             )
             btn.grid(row=idx, column=0, padx=12, pady=6, sticky="ew")
@@ -72,16 +79,33 @@ class WallpaperBridgeGUI(ctk.CTk):
         self.btn_debug_console = ctk.CTkButton(
             self.sidebar_frame, text="Debug Console", anchor="w", height=40,
             corner_radius=8, fg_color="transparent", text_color="#a0b0b5",
-            hover_color=self.theme_colors["elevated_card"], font=ctk.CTkFont(size=13),
+            hover_color=hover_state, font=ctk.CTkFont(size=13),
             command=lambda: self.select_tab_pane("debug_console")
         )
         self.nav_buttons["debug_console"] = self.btn_debug_console
-
+        self.btn_debug_console.grid(row=4, column=0, padx=12, pady=6, sticky="ew")
+ 
+        # Bottom System Block: CtrlEm Layout Hooks
         self.status_ctrlem = ctk.CTkLabel(self.sidebar_frame, text="● CtrlEm: Scanning...", text_color="#f1c40f", font=ctk.CTkFont(size=11, weight="bold"))
-        self.status_ctrlem.grid(row=6, column=0, padx=20, pady=(5, 2), sticky="w")
-
+        self.status_ctrlem.grid(row=10, column=0, padx=20, pady=(5, 2), sticky="w")
+        
+        self.btn_run_ctrlem = ctk.CTkButton(
+            self.sidebar_frame, text="Run CtrlEm", height=24, font=ctk.CTkFont(size=11), 
+            fg_color=accent_state, 
+            hover_color=hover_state,
+            text_color="#ffffff", command=self.launch_ctrlem_subprocess
+        )
+        
+        # Bottom System Block: PlayCtrl Layout Hooks
         self.status_playctrl = ctk.CTkLabel(self.sidebar_frame, text="● PlayCtrl: Scanning...", text_color="#f1c40f", font=ctk.CTkFont(size=11, weight="bold"))
-        self.status_playctrl.grid(row=7, column=0, padx=20, pady=(2, 15), sticky="w")
+        self.status_playctrl.grid(row=12, column=0, padx=20, pady=(10, 2), sticky="w")
+        
+        self.btn_run_playctrl = ctk.CTkButton(
+            self.sidebar_frame, text="Run PlayCtrl", height=24, font=ctk.CTkFont(size=11), 
+            fg_color=accent_state, 
+            hover_color=hover_state,
+            text_color="#ffffff", command=self.launch_playctrl_subprocess
+        )
 
     def check_active_processes(self, c_target, p_target):
         """Hunts through running application logs natively to identify active matches."""
@@ -95,15 +119,53 @@ class WallpaperBridgeGUI(ctk.CTk):
                 continue
         return c_running, p_running
 
+    def launch_ctrlem_subprocess(self):
+        """Sparks CtrlEm in a detached environment using the saved configuration target path."""
+        exe_path = getattr(wp_engine_bridge, "CTRLEM_EXE_PATH", "")
+        if exe_path and os.path.exists(exe_path):
+            try:
+                # Popen launches completely independently without locking the UI up
+                subprocess.Popen([exe_path], cwd=os.path.dirname(exe_path))
+                self.write_to_console("[System Rail] Initialization pipeline kicked off for CtrlEm.\n")
+            except Exception as e:
+                self.write_to_console(f"[Launcher Exception] CtrlEm process creation crashed: {e}\n", is_debug_message=True)
+        else:
+            self.write_to_console("[Launcher Error] CtrlEm target executable path is missing or invalid in Settings.\n")
+
+    def launch_playctrl_subprocess(self):
+        """Sparks PlayCtrl in a detached environment using the saved configuration target path."""
+        exe_path = getattr(wp_engine_bridge, "PLAYCTRL_EXE_PATH", "")
+        if exe_path and os.path.exists(exe_path):
+            try:
+                subprocess.Popen([exe_path], cwd=os.path.dirname(exe_path))
+                self.write_to_console("[System Rail] Initialization pipeline kicked off for PlayCtrl.\n")
+            except Exception as e:
+                self.write_to_console(f"[Launcher Exception] PlayCtrl process creation crashed: {e}\n", is_debug_message=True)
+        else:
+            self.write_to_console("[Launcher Error] PlayCtrl target executable path is missing or invalid in Settings.\n")
+
     def update_program_status_indicators(self):
-        """Refreshes structural labels dynamically based on background process scans."""
+        """Refreshes structural labels and dynamically grids Run buttons based on active states at the layout bottom."""
         c_exe = os.path.basename(wp_engine_bridge.CTRLEM_EXE_PATH).lower() if wp_engine_bridge.CTRLEM_EXE_PATH else "ctrlem.exe"
         p_exe = os.path.basename(wp_engine_bridge.PLAYCTRL_EXE_PATH).lower() if wp_engine_bridge.PLAYCTRL_EXE_PATH else "playctrl.exe"
 
         c_running, p_running = self.check_active_processes(c_exe, p_exe)
 
-        self.status_ctrlem.configure(text="● CtrlEm: Active" if c_running else "● CtrlEm: Offline", text_color="#2ecc71" if c_running else "#e74c3c")
-        self.status_playctrl.configure(text="● PlayCtrl: Active" if p_running else "● PlayCtrl: Offline", text_color="#2ecc71" if p_running else "#e74c3c")
+        # Dynamic Bottom Grid Matrix: CtrlEm Routing
+        if c_running:
+            self.status_ctrlem.configure(text="● CtrlEm: Active", text_color="#2ecc71")
+            self.btn_run_ctrlem.grid_forget()
+        else:
+            self.status_ctrlem.configure(text="● CtrlEm: Offline", text_color="#e74c3c")
+            self.btn_run_ctrlem.grid(row=11, column=0, padx=15, pady=(2, 5), sticky="ew")
+
+        # Dynamic Bottom Grid Matrix: PlayCtrl Routing
+        if p_running:
+            self.status_playctrl.configure(text="● PlayCtrl: Active", text_color="#2ecc71")
+            self.btn_run_playctrl.grid_forget()
+        else:
+            self.status_playctrl.configure(text="● PlayCtrl: Offline", text_color="#e74c3c")
+            self.btn_run_playctrl.grid(row=13, column=0, padx=15, pady=(2, 15), sticky="ew")
 
         self.after(5000, self.update_program_status_indicators)
 
@@ -414,10 +476,9 @@ class WallpaperBridgeGUI(ctk.CTk):
             if btn.cget("fg_color") != "transparent":
                 btn.configure(fg_color=self.theme_colors["accent"], text_color="#ffffff")
             else:
-                # FIX: Forces inactive sidebar text strings to blend with your secondary highlights
                 btn.configure(text_color="#a0b0b5")
 
-        # 4. Settings & Appearance Viewplanes (Your optimized loop logic)
+        # 4. Settings & Appearance Viewplanes (With explicit hover configurations)
         for pane_key in ["settings", "appearance"]:
             if pane_key in self.panes:
                 self.panes[pane_key].configure(fg_color=self.theme_colors["base_dark"])
@@ -430,13 +491,38 @@ class WallpaperBridgeGUI(ctk.CTk):
                             elif isinstance(sub_w, ctk.CTkEntry): 
                                 sub_w.configure(fg_color=self.theme_colors["elevated_card"], text_color=self.theme_colors["text_primary"])
                             elif isinstance(sub_w, ctk.CTkButton):
-                                sub_w.configure(fg_color=self.theme_colors["accent"])
+                                # FIX: Applies accent coloring and links hovering highlights to elevated cards
+                                sub_w.configure(
+                                    fg_color=self.theme_colors["accent"],
+                                    hover_color=self.theme_colors["elevated_card"],
+                                    text_color="#ffffff"
+                               )
                     elif isinstance(widget, ctk.CTkSwitch):
                         widget.configure(progress_color=self.theme_colors["accent"], text_color=self.theme_colors["text_primary"])
                         
-        # 5. Core Operational Action Buttons
-        self.save_btn.configure(fg_color=self.theme_colors["accent"])
-        self.theme_btn.configure(fg_color=self.theme_colors["accent"])
+        # 5. Core Operational Action Buttons (Main Tab Triggers)
+        self.save_btn.configure(
+            fg_color=self.theme_colors["accent"],
+            hover_color=self.theme_colors["elevated_card"],
+            text_color="#ffffff"
+        )
+        self.theme_btn.configure(
+            fg_color=self.theme_colors["accent"],
+            hover_color=self.theme_colors["elevated_card"],
+            text_color="#ffffff"
+        )
+
+        # 6. Sidebar Dynamic Background Process Control Buttons
+        if hasattr(self, 'btn_run_ctrlem'):
+            self.btn_run_ctrlem.configure(
+                fg_color=self.theme_colors["accent"], 
+                hover_color=self.theme_colors["elevated_card"]
+            )
+        if hasattr(self, 'btn_run_playctrl'):
+            self.btn_run_playctrl.configure(
+                fg_color=self.theme_colors["accent"], 
+                hover_color=self.theme_colors["elevated_card"]
+            )
 
     def save_theme_from_ui(self):
         """Validates entry fields and saves theme customizations straight back to config.json."""
