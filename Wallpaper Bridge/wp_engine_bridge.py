@@ -71,11 +71,13 @@ def format_log_entry(text, is_debug, source_app, source_group):
     """Isolates the string layout rendering logic from multi-thread I/O contexts."""
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     if not is_debug and source_app and source_group:
-        return f"[{timestamp}] changed by {source_group} {{{source_app}}}"
+        # NEW FORMAT: [*Program*] *Group* changed Wallpaper
+        return f"[{source_app}] {source_group} changed Wallpaper"
     elif DEBUG_MODE or is_debug:
         prefix = f"[{source_app}] " if source_app else ""
         return f"[{timestamp}] {prefix}{text}"
     return None
+
 
 def log_message(text, is_debug=True, source_app=None, source_group=None):
     """Routes runtime summary messages directly down onto active GUI consoles."""
