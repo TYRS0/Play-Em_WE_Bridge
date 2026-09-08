@@ -8,7 +8,7 @@ Setup
 4. Install [Python 3.13](https://www.python.org) or Newer
 5. Open CMD
 <details>
-<summary>If using CUI</summary>
+<summary>If using CLI</summary>
 
 6. Run `pip install requests apng pillow`
 7. Download the wp_engine_bridge_CUI Folder from this Github
