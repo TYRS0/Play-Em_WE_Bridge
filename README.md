@@ -24,7 +24,7 @@ Setup
 <details>
 <summary>If using GUI</summary> 
 
-6. Run `pip install requests apng pillow customtkinter psutil`
+6. Run `pip install requests apng pillow customtkinter psutil pystray`
 7. Download the Wallpaper Bridge from [Latest Releases](https://github.com/TYRS0/Wallpaper_Engine_Bridge/releases/latest)
 8. Run gui.pyw
 9. Configure settings page
@@ -35,5 +35,6 @@ Setup
 	- **PlayCtrl Exe Path** = (Your Playctrl.me .exe File)
 	- **Monitor Size** = (Size of your monitor) *Dual Monitor might work, I have 16/10 and 16/9 monitors and looks fine, your mileage may vary*
 	- **Toggle Debug Mode** = (Shows Debug Console)
+	- **Minimize to System Tray** = (Hides window to System Tray on minimize instead of Taskbar )
 10. Click Save
 </details>

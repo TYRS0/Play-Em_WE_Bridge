@@ -4,7 +4,9 @@ import threading
 import time
 import customtkinter as ctk
 import psutil
-import subprocess  
+import subprocess
+import PIL.Image, PIL.ImageDraw  # 🛠️ ADDED: Handles canvas icon rendering for the tray
+import pystray                   # 🛠️ ADDED: System tray background thread management 
 from tkinter import filedialog  # 🛠️ ADDED: Native file browser dialogue hooks
 
 # Import all background parsing components directly from your bridge code
@@ -39,6 +41,10 @@ class WallpaperBridgeGUI(ctk.CTk):
         # Build structural view panels
         self.create_sidebar_navigation()
         self.create_workspace_viewplanes()
+        
+        # New State Variable Tracker Configurations
+        self.tray_icon = None
+        self.is_exiting = False
         
         # Hydrate text entry boxes with the active saved JSON tracking parameters
         self.load_settings_into_ui()
@@ -107,6 +113,56 @@ class WallpaperBridgeGUI(ctk.CTk):
             hover_color=hover_state,
             text_color="#ffffff", command=self.launch_playctrl_subprocess
         )
+        
+        self.bind("<Unmap>", self.on_minimize_intercept)
+        self.protocol("WM_DELETE_WINDOW", self.exit_application_completely)
+
+    def on_minimize_intercept(self, event):
+        """Intercepts minimizing events to selectively route tracking elements into the tray frame."""
+        if self.state() == "iconic":
+            # If the user toggled it off, leave standard taskbar visibility untouched
+            if not wp_engine_bridge.config.get("MINIMIZE_TO_TRAY", True):
+                return
+                
+            self.withdraw() # Completely evicts the main taskbar viewport card item
+            if not self.tray_icon:
+                threading.Thread(target=self.initialize_tray_icon_worker, daemon=True).start()
+
+    def generate_tray_canvas_icon(self):
+        """Generates a dynamic 64x64 flat logo canvas utilizing your dynamic configuration accents."""
+        accent_color = self.theme_colors.get("accent", "#dc322f")
+        img = PIL.Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+        draw = PIL.ImageDraw.Draw(img)
+        # Draws a flat rounded colored badge matching your solarized bridge layout theme structure
+        draw.ellipse([8, 8, 56, 56], fill=accent_color)
+        draw.ellipse([20, 20, 44, 44], fill="#ffffff")
+        return img
+
+    def initialize_tray_icon_worker(self):
+        """Fires up the system notification tray loop node independently without blocking operations."""
+        icon_img = self.generate_tray_canvas_icon()
+        menu_items = pystray.Menu(
+            pystray.MenuItem("Show Window", self.restore_viewport_window),
+            pystray.MenuItem("Exit Bridge", self.exit_application_completely)
+        )
+        self.tray_icon = pystray.Icon("play_em_we_bridge", icon_img, "Play-Em WE Bridge", menu_items)
+        self.tray_icon.run()
+
+    def restore_viewport_window(self, icon=None):
+        """Destroys active shell structures and cleanly maps the GUI viewport frames back into focus."""
+        if self.tray_icon:
+            self.tray_icon.stop()
+            self.tray_icon = None
+        self.after(0, self.deiconify)
+        self.after(0, lambda: self.state("normal"))
+
+    def exit_application_completely(self, icon=None):
+        """Performs a global process wipe to gracefully sever running backend streams cleanly."""
+        self.is_exiting = True
+        if self.tray_icon:
+            self.tray_icon.stop()
+        self.quit()
+        os._exit(0) # Absolute clean drop to clear threaded process tracking engines cleanly        
 
     def check_active_processes(self, c_target, p_target):
         """Hunts through running application logs natively to identify active matches."""
@@ -277,7 +333,11 @@ class WallpaperBridgeGUI(ctk.CTk):
         self.entry_height.grid(row=2, column=1, padx=15, pady=5, sticky="ew")
 
         self.switch_debug = ctk.CTkSwitch(settings_pane, text="Toggle Debug Mode", progress_color=self.theme_colors["accent"])
-        self.switch_debug.pack(padx=15, pady=15, anchor="w")
+        self.switch_debug.pack(padx=15, pady=10, anchor="w")
+
+        # ADDED: Tray minimizing layout option controller
+        self.switch_tray = ctk.CTkSwitch(settings_pane, text="Minimize to System Tray", progress_color=self.theme_colors["accent"])
+        self.switch_tray.pack(padx=15, pady=10, anchor="w")
 
         self.save_btn = ctk.CTkButton(settings_pane, text="Save Configurations Changes", fg_color=self.theme_colors["accent"], hover_color="#bd2623", command=self.save_settings_from_ui)
         self.save_btn.pack(pady=20)
@@ -392,6 +452,12 @@ class WallpaperBridgeGUI(ctk.CTk):
             else:
                 self.switch_debug.deselect()
                 self.toggle_debug_navigation_visibility(should_show_tab=False)
+            
+            # FIX: Hydrate the new system tray switch layout state configuration
+            if wp_engine_bridge.config.get("MINIMIZE_TO_TRAY", True):
+                self.switch_tray.select()
+            else:
+                self.switch_tray.deselect()
             
             # FIX: Harmonized the internal dictionary keys to prevent loading drops
             self.theme_colors["accent"] = wp_engine_bridge.config.get("THEME_ACCENT", "#dc322f")
@@ -565,14 +631,14 @@ class WallpaperBridgeGUI(ctk.CTk):
             current_config["CTRLEM_EXE_PATH"] = self.entry_ctrlem_exe.get().strip()
             current_config["PLAYCTRL_EXE_PATH"] = self.entry_playctrl_exe.get().strip()
             current_config["WE_EXE_PATH"] = self.entry_we_exe.get().strip()
-            
-            if "WALLPAPER_WORKSPACE_DIR" in current_config:
-                del current_config["WALLPAPER_WORKSPACE_DIR"]
+            current_config["DEBUG_MODE"] = bool(self.switch_debug.get())
+            current_config["MINIMIZE_TO_TRAY"] = bool(self.switch_tray.get()) # Save tray config track
             
             with open(wp_engine_bridge.CONFIG_FILE, "w", encoding="utf-8") as f:
                 json.dump(current_config, f, indent=4)
                 
             self.write_to_console("[System Config] Changes committed into 'config.json' successfully.\n")
+            wp_engine_bridge.config = current_config
             
             wp_engine_bridge.CTRLEM_LOG_PATH = current_config["CTRLEM_LOG_PATH"]
             wp_engine_bridge.PLAYCTRL_LOG_FOLDER = current_config["PLAYCTRL_LOG_FOLDER"]
