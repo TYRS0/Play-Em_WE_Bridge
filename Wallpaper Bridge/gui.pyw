@@ -18,7 +18,8 @@ class WallpaperBridgeGUI(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("Wallpaper Engine Bridge Controller")
+        # FIX: Renamed viewport window matching application definitions
+        self.title("Play-Em WE Bridge")
         self.geometry("750x650")
         
         # Exact hex mapping extracted directly from your UI reference photo
