@@ -1,7 +1,7 @@
 
 This was made with Google Search AI Mode (Gemini 3)
 
-Setup
+### Setup
 1. Install and setup [Wallpaper Engine](https://store.steampowered.com/app/431960/Wallpaper_Engine/), [CtrlEm](https://ctrlem.com), and [Playctrl.me](https://playctrl.me)
 2. Make sure in CtrlEm Settings, Command Logs is ON and Daily Log File is OFF
 3. Make sure in Playctrl.me Settings, Enable Command Logging is ON
@@ -38,3 +38,15 @@ Setup
 	- **Minimize to System Tray** = (Hides window to System Tray on minimize instead of Taskbar )
 10. Click Save
 </details>
+
+### Optional
+Download Codec for System
+<details>
+<summary>Links</summary>
+	
+- [AV1](https://apps.microsoft.com/detail/9mvzqvxjbq9v?hl=en-US&gl=US)	
+- [VP9](https://apps.microsoft.com/detail/9n4d0msmp0pt?hl=en-US&gl=US)
+- [WebP](https://apps.microsoft.com/detail/9pg2dk419drg?hl=en-US&gl=US)
+</details>
+	
+windows doesn't support all video formats out of the box which may result in you wallpaper not changing or a black screen. Luckily the MS Store has a couple of the more common uncommon codecs to download easily. 
